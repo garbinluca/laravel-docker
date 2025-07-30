@@ -46,6 +46,7 @@ docker-compose exec app php artisan key:generate
 
 # Run Artisan commands
 docker-compose exec app php artisan [command]
+```
 
 ## Setup Steps
 
