@@ -1,100 +1,107 @@
 version: '3.8'
 
 services:
-    # PHP-FPM service for Laravel
-    app:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        container_name: projectname_app
-        restart: unless-stopped
-        working_dir: /var/www/html
-        volumes:
-            - ./:/var/www/html
-            - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
-        networks:
-            - projectname_network
-        depends_on:
-            - mysql
-        environment:
-            - DB_HOST=mysql
-            - DB_PORT=3306
-            - DB_DATABASE=projectname_local
-            - DB_USERNAME=laravel
-            - DB_PASSWORD=laravel
+  # PHP-FPM service for Laravel (PHP 7.2)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: projectname_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - projectname_network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+        - DB_HOST=mysql
+        - DB_PORT=3306
+        - DB_DATABASE=projectname_local
+        - DB_USERNAME=laravel
+        - DB_PASSWORD=laravel
 
-    # Nginx web server
-    nginx:
-        image: nginx:alpine
-        container_name: projectname_nginx
-        restart: unless-stopped
-        ports:
-            - "8080:80"
-        volumes:
-            - ./:/var/www/html
-            - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-        networks:
-            - projectname_network
-        depends_on:
-            - app
+  # Nginx web server
+  nginx:
+    image: nginx:alpine
+    container_name: projectname_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - projectname_network
+    depends_on:
+      - app
 
-    # MySQL database
-    mysql:
-        image: mysql:8.0
-        container_name: projectname_mysql
-        restart: unless-stopped
-        environment:
-            MYSQL_ROOT_PASSWORD: root
-            MYSQL_DATABASE: projectname_local
-            MYSQL_USER: laravel
-            MYSQL_PASSWORD: laravel
-        ports:
-            - "3306:3306"
-        volumes:
-            - mysql_data:/var/lib/mysql
-            - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
-        networks:
-            - projectname_network
-        command: --default-authentication-plugin=mysql_native_password
+  # MySQL database (compatible with PHP 7.2)
+  mysql:
+    image: mysql:5.7
+    container_name: projectname_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: projectname_local
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: laravel
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - projectname_network
+    command: --default-authentication-plugin=mysql_native_password --sql_mode=NO_ENGINE_SUBSTITUTION
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-    # Redis for caching (optional but recommended)
-    redis:
-        image: redis:7-alpine
-        container_name: projectname_redis
-        restart: unless-stopped
-        ports:
-            - "6379:6379"
-        networks:
-            - projectname_network
+  # Redis for caching (compatible version)
+  redis:
+    image: redis:5-alpine
+    container_name: projectname_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - projectname_network
 
-    # Composer for dependency management
-    composer:
-        image: composer:2
-        container_name: projectname_composer
-        volumes:
-            - ./:/app
-        working_dir: /app
-        networks:
-            - projectname_network
-        profiles:
-            - tools
+  # Composer for dependency management
+  composer:
+    image: composer:1.10
+    container_name: projectname_composer
+    volumes:
+      - ./:/app
+    working_dir: /app
+    networks:
+      - projectname_network
+    profiles:
+      - tools
 
-    # Node.js for asset compilation
-    node:
-        image: node:18-alpine
-        container_name: projectname_node
-        volumes:
-            - ./:/app
-        working_dir: /app
-        networks:
-            - projectname_network
-        profiles:
-            - tools
+  # Node.js for asset compilation (compatible version)
+  node:
+    image: node:12-alpine
+    container_name: projectname_node
+    volumes:
+      - ./:/app
+    working_dir: /app
+    networks:
+      - projectname_network
+    profiles:
+      - tools
 
 volumes:
-    mysql_data:
-        driver: local
+  mysql_data:
+    driver: local
 
 networks:
-    projectname_network:
-        driver: bridge
+  projectname_network:
+    driver: bridge
