@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
+    libicu-dev \
     zip \
     unzip \
     netcat-openbsd \
@@ -31,7 +32,8 @@ RUN docker-php-ext-install \
     bcmath \
     gd \
     zip \
-    opcache
+    opcache \
+    intl
 
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
